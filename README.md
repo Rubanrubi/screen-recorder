@@ -30,3 +30,10 @@
 
   Run html by any local server.
 
+## Api details
+
+  | Endpoint |  Purpose |
+  |:-----|:--------:|------:|
+  | /startRecording/:userId   | **Start Recording** |
+  | stopRecording/:userId   |  **Stop Recording**  |
+
