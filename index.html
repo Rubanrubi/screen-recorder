@@ -17,11 +17,12 @@
 
         async function startRecording() {
             try {
-                const stream = await navigator.mediaDevices.getDisplayMedia({ video: { mediaSource: 'screen', mimeType: 'video/webm; codecs=vp9' } });
+                const microphoneStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+                const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: { mediaSource: 'screen', mimeType: 'video/webm; codecs=vp9' }, audio: true });
 
-                console.log('video stream', stream);
+                const combinedStream = new MediaStream([...microphoneStream.getAudioTracks(), ...screenStream.getAudioTracks(), ...screenStream.getVideoTracks()]);
 
-                mediaRecorder = new MediaRecorder(stream);
+                mediaRecorder = new MediaRecorder(combinedStream, { mimeType: 'video/webm; codecs=vp9' });
 
                 console.log('mediarecorder', mediaRecorder);
 
