@@ -6,7 +6,7 @@ const ffmpegCommand = [
   '-i', 'default',               // Input device (default system audio)
   '-f', 'x11grab',               // Input format (screen capture)
   '-video_size', '1920x1080',    // Video size
-  '-i', ':0.0',                  // Input device (screen)
+  '-i', process.env.DISPLAY,     // Input device (screen), use the DISPLAY environment variable
   '-c:v', 'libx264',             // Video codec
   '-preset', 'ultrafast',        // Preset for faster encoding
   '-c:a', 'aac',                 // Audio codec
@@ -21,4 +21,10 @@ const ffmpegProcess = spawn('ffmpeg', ffmpegCommand);
 // Handle ffmpeg process events
 ffmpegProcess.stdout.on('data', data => console.log(data.toString()));
 ffmpegProcess.stderr.on('data', data => console.error(data.toString()));
-ffmpegProcess.on('close', () => console.log('Recording finished.'));
+ffmpegProcess.on('close', code => {
+  if (code === 0) {
+    console.log('Recording finished.');
+  } else {
+    console.error(`Recording failed with code ${code}`);
+  }
+});

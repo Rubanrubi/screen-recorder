@@ -1,117 +1,108 @@
-const express = require('express');
-const fileUpload = require('express-fileupload');
-const app = express();
-const cors = require('cors');
-const fs = require('fs');
-const path = require('path');
-const { spawn } = require('child_process');
-app.use(cors());
+const start = document.getElementById("start");
+const stop = document.getElementById("stop");
+const video = document.querySelector("video");
+let recorder, stream;
 
-// app.use(fileUpload());
-const activeRecordings = {};
+let mic;
 
-app.post('/recording', (req, res) => {
-  if (!req.files || !req.files.video) {
-    return res.status(400).json({ success: false, message: 'No file uploaded.' });
+mic = true;
+
+
+function microchange() {
+
+  if(mic==true){
+    document.getElementById('mic').innerHTML = `<i class="fa fa-microphone"></i>`
+    mic = false
+
+  }else{
+    document.getElementById('mic').innerHTML = `<i class="fa fa-microphone-slash"></i>`
+    mic = true
   }
 
-  const videoFile = req.files.video;
+}
 
-  // Create uploads folder if it doesn't exist
-  const uploadFolder = path.join(__dirname, 'uploads');
-  if (!fs.existsSync(uploadFolder)) {
-    fs.mkdirSync(uploadFolder);
-  }
+const mergeAudioStreams = (desktopStream, voiceStream) => {
+    const context = new AudioContext();
+    const destination = context.createMediaStreamDestination();
+    let hasDesktop = false;
+    let hasVoice = false;
+    
 
-  videoFile.mv(`${uploadFolder}/${videoFile.name}`, (err) => {
-    if (err) {
-      return res.status(500).json({ success: false, message: err });
+    if (desktopStream && desktopStream.getAudioTracks().length > 0) {
+      // If you don't want to share Audio from the desktop it should still work with just the voice.
+      const source1 = context.createMediaStreamSource(desktopStream);
+      const desktopGain = context.createGain();
+      desktopGain.gain.value = 0.7;
+      source1.connect(desktopGain).connect(destination);
+      hasDesktop = true;
     }
-    res.status(200).json({ success: true, message: 'File uploaded successfully' })
-  });
-});
+    
+    if (voiceStream && voiceStream.getAudioTracks().length > 0) {
+      const source2 = context.createMediaStreamSource(voiceStream);
+      const voiceGain = context.createGain();
+      voiceGain.gain.value = 0.7;
+      source2.connect(voiceGain).connect(destination);
+      hasVoice = true;
+    }
+      
+    return (hasDesktop || hasVoice) ? destination.stream.getAudioTracks() : [];
+  };
 
 
-/**
- * Internal function to Start recording by user id.
- *
- * @param {userId}
- * @returns {ffmpegProcess}
- */
-function startRecording(userId) {
-  const ffmpegProcess = spawn('ffmpeg', [
-    '-f', 'pulse',
-    '-i', 'default',
-    '-f', 'x11grab',
-    '-video_size', '1920x1080',
-    '-i', ':0.0',
-    '-c:v', 'libx264',
-    '-preset', 'ultrafast',
-    '-c:a', 'aac',
-    '-strict', 'experimental',
-    '-b:a', '320k',
-    `output_${userId}.mp4`
-  ]);
 
-  activeRecordings[userId] = ffmpegProcess;
+async function startRecording() {
+/*  stream = await navigator.mediaDevices.getDisplayMedia({
+    audio: true,
+    video: { mediaSource: "screen" }
+  });*/
 
-  ffmpegProcess.on('exit', () => {
-    delete activeRecordings[userId];
-  });
+  desktopStream = await navigator.mediaDevices.getDisplayMedia({ video:true, audio: true });
 
-  return ffmpegProcess;
+  if(mic){
+
+    voiceStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
+
+    const tracks = [
+      ...desktopStream.getVideoTracks(), 
+      ...mergeAudioStreams(desktopStream, voiceStream)
+    ];
+
+    stream = new MediaStream(tracks);
+  }
+  else{
+    stream =  desktopStream
+  }
+
+  // options = {mimeType: 'video/webm; codecs=vp9'};
+
+  recorder = new MediaRecorder(stream);
+
+  const chunks = [];
+  recorder.ondataavailable = e => chunks.push(e.data);
+  recorder.onstop = e => {
+    const completeBlob = new Blob(chunks, { type: chunks[0].type });
+    video.src = URL.createObjectURL(completeBlob);
+    video.controls = true;
+    const a = document.createElement('a');
+    a.href = video.src;
+    a.download = 'screen_recording.webm';
+    a.click();
+  };
+
+  recorder.start();
 }
 
-/**
- * Internal function to Stop recording by user id.
- *
- * @param {userId}
- * @returns {ffmpegProcess}
- */
-function stopRecording(userId) {
-  const ffmpegProcess = activeRecordings[userId];
-  if (ffmpegProcess) {
-    ffmpegProcess.kill('SIGINT');
-    return true;
-  }
-  return false;
-}
+start.addEventListener("click", () => {
+  start.setAttribute("disabled", true);
+  stop.removeAttribute("disabled");
 
-/**
- * Start recording by user id.
- *
- * @param {userId}
- * @returns {string}
- */
-app.get('/startRecording/:userId', (req, res) => {
-  const userId = req.params.userId;
-  if (!activeRecordings[userId]) {
-    startRecording(userId);
-    res.json({ status: 'success', message: 'Recording started', userId });
-  } else {
-    res.json({ status: 'error', message: 'Recording already in progress', userId });
-  }
+  startRecording();
 });
 
-/**
- * Stop recording by user id.
- *
- * @param {userId}
- * @returns {string}
- */
-app.get('/stopRecording/:userId', (req, res) => {
-  const userId = req.params.userId;
-  if (stopRecording(userId)) {
-    res.send('Recording stopped');
-  } else {
-    res.send('No recording in progress for this user');
-  }
+stop.addEventListener("click", () => {
+  stop.setAttribute("disabled", true);
+  start.removeAttribute("disabled");
+
+  recorder.stop();
+  stream.getVideoTracks()[0].stop();
 });
-
-
-
-app.listen(3001, () => {
-  console.log("Server is running on port 3001");
-});
-
-module.exports = app;

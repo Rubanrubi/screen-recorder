@@ -1,84 +1,21 @@
 <!DOCTYPE html>
 <html>
+  <head>
+    <title>Screen Recording</title>
+    <link rel="shortcut icon" type="image/x-icon" href="favicon.ico" />
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
 
-<head>
-    <title>Screen Recorder</title>
-</head>
+  <body>
+    <button id="start">
+      Start Recording
+    </button>
+    <button id="stop" disabled>
+      Stop Recording
+    </button>
+    <video autoplay />
 
-<body>
-    <button id="startButton">Start Recording</button>
-    <button id="stopButton" disabled>Stop Recording</button>
-    <script>
-        let mediaRecorder;
-        let recordedChunks = [];
-
-        const startButton = document.getElementById('startButton');
-        const stopButton = document.getElementById('stopButton');
-
-        async function startRecording() {
-            try {
-                const microphoneStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
-                const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: { mediaSource: 'screen', mimeType: 'video/webm; codecs=vp9' }, audio: true });
-
-                const combinedStream = new MediaStream([...microphoneStream.getAudioTracks(), ...screenStream.getAudioTracks(), ...screenStream.getVideoTracks()]);
-
-                mediaRecorder = new MediaRecorder(combinedStream, { mimeType: 'video/webm; codecs=vp9' });
-
-                console.log('mediarecorder', mediaRecorder);
-
-                mediaRecorder.ondataavailable = (event) => {
-                    console.log('recorded chunks', event.data);
-                    if (event.data.size > 0) {
-                        recordedChunks.push(event.data);
-                    }
-                };
-
-                mediaRecorder.onstop = async () => {
-                    const blob = new Blob(recordedChunks, { type: 'video/webm' });
-                    console.log('blog', blob);
-                    const formData = new FormData();
-                    formData.append('video', blob, 'recorded-2.webm');
-
-                    // code to download video from client side
-
-                    //   const url = URL.createObjectURL(blob);
-                    //   console.log('url', url);
-                    //   const a = document.createElement('a');
-                    //   a.href = url;
-                    //   a.download = 'screen_recording.webm';
-                    //   a.click();
-                    recordedChunks = [];
-
-                    fetch('http://localhost:3001/recording', {
-                        method: 'POST',
-                        body: formData
-                    }).then(response => {
-                        console.log('video uploaded ', response);
-                    }).catch(error => {
-
-                    });
-                };
-
-                mediaRecorder.start();
-
-                startButton.disabled = true;
-                stopButton.disabled = false;
-            } catch (error) {
-                console.error('Error accessing screen:', error);
-            }
-        }
-
-        function stopRecording() {
-            if (mediaRecorder.state !== 'inactive') {
-                mediaRecorder.stop();
-                startButton.disabled = false;
-                stopButton.disabled = true;
-            }
-        }
-
-        startButton.addEventListener('click', startRecording);
-        stopButton.addEventListener('click', stopRecording);
-    </script>
-</body>
-
+    <script src="index.js"></script>
+  </body>
 </html>

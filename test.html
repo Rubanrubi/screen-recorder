@@ -1,52 +1,30 @@
 <!DOCTYPE html>
 <html>
+  <head>
+    <title>Screen Recording</title>
+    <link rel="shortcut icon" type="image/x-icon" href="favicon.ico" />
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="test.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+  </head>
 
-<head>
-    <title>Screen Recorder</title>
-</head>
+  <body>
+    <div class="container">
+      <h1 class="header">Video Recorder</h1>
+      
+      <div class="center">
+        <button class="button" id="mic" onclick="microchange()"><i class="fa fa-microphone"></i></button>
+        <button class="button" id="start">Record</button>
+        <button class="button" id="stop" disabled>Stop</button>
+      </div>
 
-<body>
-    <button id="startButton" onclick="startRecording()">Start Recording</button>
-    <button id="stopButton" disabled onclick="stopRecording()">Stop Recording</button>
-    <script>
-        const baseURL = 'http://localhost:3001';
-        const startButton = document.getElementById('startButton');
-        const stopButton = document.getElementById('stopButton');
+        <video />
 
-        function startRecording() {
-            fetch(`${baseURL}/startRecording/user123`)
-                .then(response => {
-                    console.log('response', response);
-                    debugger;
-                    if (response.ok) {
-                        startButton.disabled = true;
-                        stopButton.disabled = false;
-                        console.log('Recording started');
-                    } else {
-                        console.error('Failed to start recording');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                });
-        }
 
-        function stopRecording() {
-            fetch(`${baseURL}/stopRecording/user123`)
-                .then(response => {
-                    if (response.ok) {
-                        startButton.disabled = false;
-                        stopButton.disabled = true;
-                        console.log('Recording stopped');
-                    } else {
-                        console.error('Failed to stop recording');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                });
-        }
-    </script>
-</body>
+    </div>
+
+
+    <script src="index.js"></script>
+  </body>
 
 </html>
